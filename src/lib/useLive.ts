@@ -14,9 +14,12 @@ export function useLive<T>(fetcher: () => PromiseLike<T>, tables: string[], init
   const [data, setData] = useState<T>(initial);
   const [loading, setLoading] = useState(true);
   const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tablesKey = tables.join(",");
+
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
 
   const reload = useCallback(async () => {
     try {

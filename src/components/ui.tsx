@@ -1,8 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./Icon";
+
+const subscribeToNothing = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 /* ------------------------------------------------------------------ */
 /* Modal                                                               */
@@ -23,8 +28,7 @@ export function Modal({
   footer?: ReactNode;
   wide?: boolean;
 }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribeToNothing, getClientSnapshot, getServerSnapshot);
 
   useEffect(() => {
     if (!open) return;
