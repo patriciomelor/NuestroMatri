@@ -1412,6 +1412,27 @@ h3 {
   border-bottom: none;
 }
 
+.category-budget-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(180px, 260px);
+  gap: 12px;
+}
+
+.category-budget-row strong {
+  overflow-wrap: anywhere;
+}
+
+.category-budget-row .input {
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .category-budget-row {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(96px, 132px);
+    gap: 8px;
+  }
+}
+
 .list-item.clickable {
   cursor: pointer;
   border-radius: 12px;
