@@ -49,7 +49,6 @@ const blankResponse = (): ResponseForm => ({ attending: true, dietary: "ninguna"
 const dietOptions: { value: Dietary; label: string }[] = [{ value: "ninguna", label: "Sin restricciones" }, { value: "vegetariano", label: "Vegetariana" }, { value: "vegano", label: "Vegana" }, { value: "celiaco", label: "Celíaca" }, { value: "sin_lactosa", label: "Sin lactosa" }, { value: "alergia", label: "Alergia" }, { value: "otra", label: "Otra" }];
 
 export function RsvpForm({ code }: { code?: string }) {
-  const supabase = createClient();
   const [settings, setSettings] = useState<RsvpSettings | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -65,6 +64,7 @@ export function RsvpForm({ code }: { code?: string }) {
   useEffect(() => {
     let active = true;
     async function load() {
+      const supabase = createClient();
       const { data, error: infoError } = await supabase.rpc("rsvp_info");
       if (!active) return;
       if (infoError) setError("Las confirmaciones todavía no están disponibles. Intenta más tarde.");
@@ -85,7 +85,7 @@ export function RsvpForm({ code }: { code?: string }) {
     }
     void load();
     return () => { active = false; };
-  }, [code, supabase]);
+  }, [code]);
 
   const weddingDate = useMemo(() => settings ? new Intl.DateTimeFormat("es-CL", { dateStyle: "long", timeZone: "America/Santiago" }).format(new Date(settings.wedding_date)) : "", [settings]);
 
@@ -97,6 +97,7 @@ export function RsvpForm({ code }: { code?: string }) {
     }
     setSearching(true);
     setError("");
+    const supabase = createClient();
     const { data, error: searchError } = await supabase.rpc("rsvp_search", { p_query: query.trim() });
     setResults((data as SearchResult[] | null) ?? []);
     if (searchError) setError("No pudimos realizar la búsqueda. Intenta de nuevo.");
@@ -106,6 +107,7 @@ export function RsvpForm({ code }: { code?: string }) {
 
   async function loadFamily(result: SearchResult) {
     setError("");
+    const supabase = createClient();
     const { data, error: groupError } = await supabase.rpc("rsvp_group_members", { p_guest_id: result.guest_id });
     if (groupError) {
       setError("No pudimos cargar el grupo familiar.");
@@ -144,6 +146,7 @@ export function RsvpForm({ code }: { code?: string }) {
         plus_one_dietary_notes: response.plus_one_dietary_notes,
       };
     });
+    const supabase = createClient();
     const { error: submitError } = await supabase.rpc("rsvp_submit", { p_responses: payload });
     if (submitError) setError(submitError.message.includes("cerrado") ? "El plazo para responder ya terminó." : "No pudimos guardar tus respuestas. Intenta nuevamente.");
     else setSubmitted(true);
