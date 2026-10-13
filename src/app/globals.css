@@ -43,7 +43,7 @@
   --shadow-lg: 0 24px 60px rgba(60, 22, 56, 0.18), 0 4px 16px rgba(60, 22, 56, 0.08);
 
   --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  --font-ui: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  --font-ui: var(--font-geist-sans), "Geist", system-ui, sans-serif;
 
   --sidebar-w: 264px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -152,8 +152,8 @@ h3 {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 10px 22px;
+  gap: 10px;
+  padding: 0 4px 22px;
   margin-bottom: 10px;
   border-bottom: 1px solid rgba(255, 246, 234, 0.12);
 }
@@ -167,10 +167,17 @@ h3 {
 
 .brand-title {
   font-family: var(--font-display);
-  font-size: 1.55rem;
+  font-size: 1.32rem;
   font-weight: 600;
   line-height: 1;
   color: var(--cream);
+  white-space: nowrap;
+}
+
+.brand > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .brand-sub {
@@ -1756,6 +1763,13 @@ h3 {
   margin: 8px 0 4px;
 }
 
+.hero h2 {
+  color: var(--cream);
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 500;
+  margin: 8px 0 10px;
+}
+
 .hero h1 em {
   font-style: italic;
   color: var(--gold);
@@ -1808,7 +1822,7 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-.countdown-unit.main strong {
+.countdown-unit.featured strong {
   color: var(--gold);
 }
 

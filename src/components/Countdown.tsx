@@ -24,7 +24,7 @@ export function Countdown({ target }: { target: string }) {
 
   return (
     <div className="countdown" aria-label="Tiempo restante hasta la boda">
-      <div className="countdown-unit main"><strong>{remaining.days}</strong><span>días</span></div>
+      <div className="countdown-unit featured"><strong>{remaining.days}</strong><span>días</span></div>
       <div className="countdown-unit"><strong>{String(remaining.hours).padStart(2, "0")}</strong><span>horas</span></div>
       <div className="countdown-unit"><strong>{String(remaining.minutes).padStart(2, "0")}</strong><span>minutos</span></div>
     </div>
