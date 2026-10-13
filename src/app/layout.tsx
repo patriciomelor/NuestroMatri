@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import "./globals.css";
 
@@ -30,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable}`}>
       <body>
         <PwaRegistration />
+        <Suspense fallback={null}><MobileNavigation /></Suspense>
         {children}
       </body>
     </html>
