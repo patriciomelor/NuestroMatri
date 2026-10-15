@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, GuestGroup, Rsvp, WeddingSettings } from "@/lib/types";
 
-type ConfirmationGuest = Guest & { rsvps: Rsvp[] | null };
+type ConfirmationGuest = Guest & { rsvps: Rsvp[] | Rsvp | null };
 type ResponseFilter = "todos" | "pendiente" | "si" | "no";
 const menu = [["/", "Resumen", "home"], ["/presupuesto", "Presupuesto", "wallet"], ["/tareas", "Tareas", "checkSquare"], ["/acuerdos", "Acuerdos", "handshake"], ["/invitados", "Invitados", "users"], ["/confirmaciones", "Confirmaciones", "mail"], ["/mesas", "Mesas", "table"], ["/regalos", "Regalos", "gift"], ["/cronograma", "Cronograma", "calendar"]] as const;
 const dietaryLabels: Record<Rsvp["dietary"], string> = { ninguna: "Sin restricciones", vegetariano: "Vegetariana", vegano: "Vegana", celiaco: "Celíaca", sin_lactosa: "Sin lactosa", alergia: "Alergia", otra: "Otra" };
@@ -47,7 +47,7 @@ export default function ConfirmationsPage() {
     };
   }, [supabase]);
 
-  const responseOf = (guest: ConfirmationGuest) => guest.rsvps?.[0] ?? null;
+  const responseOf = (guest: ConfirmationGuest) => Array.isArray(guest.rsvps) ? guest.rsvps[0] ?? null : guest.rsvps;
   const people = guestsQ.data;
   const confirmed = people.filter((guest) => responseOf(guest)?.attending).length;
   const declined = people.filter((guest) => responseOf(guest) && !responseOf(guest)?.attending).length;
