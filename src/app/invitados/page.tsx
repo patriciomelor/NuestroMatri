@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, GuestGroup, GuestSide, Profile, Rsvp } from "@/lib/types";
 
@@ -15,9 +18,10 @@ const sides: { value: GuestSide; label: string }[] = [{ value: "novio", label: "
 
 export default function GuestsPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const guestsQ = useLive<GuestRow[]>(() => rows<GuestRow>(supabase.from("guests").select("*, rsvps(attending)").order("first_name")), ["guests", "rsvps"], []);
   const groupsQ = useLive<GuestGroup[]>(() => rows<GuestGroup>(supabase.from("guest_groups").select("*").order("name")), ["guest_groups"], []);
-  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side")), ["profiles"], []);
+  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side,role")), ["profiles"], []);
   const [userId, setUserId] = useState("");
   const [groupModal, setGroupModal] = useState(false);
   const [guestModal, setGuestModal] = useState(false);
@@ -36,7 +40,10 @@ export default function GuestsPage() {
     const fullName = `${guest.first_name} ${guest.last_name}`.toLocaleLowerCase("es");
     return !guest.is_plus_one && (sideFilter === "todos" || guest.side === sideFilter) && fullName.includes(query.trim().toLocaleLowerCase("es"));
   }), [guestsQ.data, sideFilter, query]);
-  const confirmed = guestsQ.data.filter((guest) => responseOf(guest)?.attending).length;
+  const mainGuests = guestsQ.data.filter((guest) => !guest.is_plus_one);
+  const additionalGuests = guestsQ.data.filter((guest) => guest.is_plus_one);
+  const confirmed = mainGuests.filter((guest) => responseOf(guest)?.attending).length;
+  const confirmedAdditional = additionalGuests.filter((guest) => responseOf(guest)?.attending).length;
   const declined = guestsQ.data.filter((guest) => responseOf(guest) && !responseOf(guest)?.attending).length;
   const pending = guestsQ.data.filter((guest) => !responseOf(guest)).length;
 
@@ -53,6 +60,7 @@ export default function GuestsPage() {
       setGroupModal(false);
       setNotice("Grupo familiar agregado.");
       await groupsQ.reload();
+      void notifyCollaborators("group_added", String(data.get("name") ?? "").trim());
     }
     setSaving(false);
   }
@@ -80,6 +88,7 @@ export default function GuestsPage() {
       setGuestModal(false);
       setNotice("Invitado agregado.");
       await guestsQ.reload();
+      void notifyCollaborators("guest_added", `${String(data.get("first_name") ?? "").trim()} ${String(data.get("last_name") ?? "").trim()}`.trim());
     }
     setSaving(false);
   }
@@ -98,17 +107,20 @@ export default function GuestsPage() {
     if (!window.confirm(`¿Eliminar a ${guest.first_name} ${guest.last_name}?`)) return;
     const { error: deleteError } = await supabase.from("guests").delete().eq("id", guest.id);
     if (deleteError) setError(deleteError.message);
-    else await guestsQ.reload();
+    else {
+      await guestsQ.reload();
+      void notifyCollaborators("guest_removed", `${guest.first_name} ${guest.last_name}`);
+    }
   }
 
   const groupName = (id: string | null) => groupsQ.data.find((group) => group.id === id)?.name ?? "Sin grupo";
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/invitados" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/invitados").map(([href, label, icon]) => <Link className={`nav-link ${href === "/invitados" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Lista y confirmaciones</div><h1 className="page-title">Invitados</h1><p className="page-subtitle">Organicen por familia, lado y respuesta.</p></div><div className="row wrap"><button className="btn btn-secondary" onClick={() => setGroupModal(true)}><Icon name="users" />Nuevo grupo</button><button className="btn btn-primary" onClick={() => { setError(""); setGuestModal(true); }}><Icon name="userPlus" />Agregar invitado</button></div></header>
       {error && <p className="error-box" role="alert">{error}</p>}{notice && <p className="success-box" role="status">{notice}</p>}
-      <section className="grid grid-4 mb-2"><article className="card stat"><div className="stat-label">Personas</div><div className="stat-value">{guestsQ.data.filter((guest) => !guest.is_plus_one).length}</div><div className="stat-hint">Invitados principales</div></article><article className="card stat"><div className="stat-label">Confirmados</div><div className="stat-value">{confirmed}</div><div className="stat-hint">Asistirán</div></article><article className="card stat"><div className="stat-label">No asistirán</div><div className="stat-value">{declined}</div><div className="stat-hint">Respuestas recibidas</div></article><article className="card stat"><div className="stat-label">Pendientes</div><div className="stat-value">{pending}</div><div className="stat-hint">Aún sin responder</div></article></section>
+      <section className="grid grid-4 mb-2"><article className="card stat"><div className="stat-label">Invitados</div><div className="stat-value">{mainGuests.length}</div><div className="stat-hint">Personas principales</div></article><article className="card stat"><div className="stat-label">Adicionales (+1)</div><div className="stat-value">{additionalGuests.length}</div><div className="stat-hint">Acompañantes registrados</div></article><article className="card stat"><div className="stat-label">Total invitados</div><div className="stat-value">{mainGuests.length + additionalGuests.length}</div><div className="stat-hint">Invitados y adicionales</div></article><article className="card stat"><div className="stat-label">Confirmados</div><div className="stat-value">{confirmed}</div><div className="stat-hint">Invitados principales</div></article><article className="card stat"><div className="stat-label">Adicionales confirmados</div><div className="stat-value">{confirmedAdditional}</div><div className="stat-hint">Acompañantes que asistirán</div></article><article className="card stat"><div className="stat-label">Total confirmados</div><div className="stat-value">{confirmed + confirmedAdditional}</div><div className="stat-hint">Invitados y adicionales</div></article><article className="card stat"><div className="stat-label">No asistirán</div><div className="stat-value">{declined}</div><div className="stat-hint">Respuestas recibidas</div></article><article className="card stat"><div className="stat-label">Pendientes</div><div className="stat-value">{pending}</div><div className="stat-hint">Aún sin responder</div></article></section>
       <section className="card mb-2"><div className="card-title"><h2>Grupos e invitaciones</h2><small>{groupsQ.data.length} grupos</small></div>{groupsQ.data.length ? <div className="list">{groupsQ.data.map((group) => <article className="list-item" key={group.id}><div className="stat-icon mauve"><Icon name="users" /></div><div className="grow"><strong>{group.name}</strong><div className="small muted">{sides.find((side) => side.value === group.side)?.label} · {guestsQ.data.filter((guest) => guest.group_id === group.id && !guest.is_plus_one).length} personas</div><Link className="code" href={`/confirmar/${group.invite_code}`} target="_blank">/confirmar/{group.invite_code}</Link></div><button className="btn btn-secondary btn-sm" onClick={() => void copyInvite(group)}><Icon name="copy" />Copiar enlace</button></article>)}</div> : <EmptyState icon="users" title="Sin grupos familiares" text="Crea grupos para compartir un enlace de confirmación personalizado con cada invitación." action={<button className="btn btn-secondary" onClick={() => setGroupModal(true)}><Icon name="plus" />Crear grupo</button>} />}</section>
       <section className="card"><div className="row-between wrap mb-2"><Segmented value={sideFilter} onChange={setSideFilter} options={[{ value: "todos", label: "Todos", count: visibleCount(guestsQ.data) }, ...sides.map((side) => ({ ...side, count: guestsQ.data.filter((guest) => !guest.is_plus_one && guest.side === side.value).length }))]} /><label className="field"><span className="label">Buscar invitado</span><input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre o apellido" /></label></div>
         {visibleGuests.length ? <div style={{ overflowX: "auto" }}><table className="table"><thead><tr><th>Invitado</th><th>Grupo</th><th>Lado</th><th>Tipo</th><th>RSVP</th><th>+1</th><th aria-label="Acciones" /></tr></thead><tbody>{visibleGuests.map((guest) => { const response = responseOf(guest); return <tr key={guest.id}><td><strong>{guest.first_name} {guest.last_name}</strong><div className="tiny muted">{guest.phone ?? guest.email ?? ""}</div></td><td>{groupName(guest.group_id)}</td><td>{sides.find((side) => side.value === guest.side)?.label}</td><td>{guest.guest_type === "nino" ? "Niño/a" : "Adulto"}</td><td><span className={`badge ${response ? response.attending ? "sage" : "muted" : "mauve"}`}>{response ? response.attending ? "Confirmado" : "No asiste" : "Pendiente"}</span></td><td>{guest.plus_one_allowed ? "Permitido" : "—"}</td><td><button className="btn btn-ghost btn-icon danger-text" title="Eliminar invitado" aria-label={`Eliminar ${guest.first_name} ${guest.last_name}`} onClick={() => void deleteGuest(guest)}><Icon name="trash" /></button></td></tr>; })}</tbody></table></div> : <EmptyState icon="users" title="No hay invitados en esta vista" text="Agrega personas individualmente o revisa el filtro seleccionado." action={<button className="btn btn-primary" onClick={() => setGuestModal(true)}><Icon name="userPlus" />Agregar invitado</button>} />}

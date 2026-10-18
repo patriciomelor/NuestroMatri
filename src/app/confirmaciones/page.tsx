@@ -8,6 +8,9 @@ import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { downloadCSV } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, GuestGroup, Rsvp, WeddingSettings } from "@/lib/types";
 
@@ -18,6 +21,7 @@ const dietaryLabels: Record<Rsvp["dietary"], string> = { ninguna: "Sin restricci
 
 export default function ConfirmationsPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const guestsQ = useLive<ConfirmationGuest[]>(() => rows<ConfirmationGuest>(supabase.from("guests").select("*, rsvps(*)").order("first_name")), ["guests", "rsvps"], []);
   const groupsQ = useLive<GuestGroup[]>(() => rows<GuestGroup>(supabase.from("guest_groups").select("*").order("name")), ["guest_groups"], []);
   const settingsQ = useLive<WeddingSettings | null>(async () => {
@@ -38,7 +42,7 @@ export default function ConfirmationsPage() {
       if ((payload.new as Rsvp | undefined)?.source !== "formulario") return;
       if (notificationTimer.current) clearTimeout(notificationTimer.current);
       notificationTimer.current = setTimeout(() => {
-        void fetch("/api/push/notify", { method: "POST" });
+        void notifyCollaborators("rsvp_received");
       }, 900);
     }).subscribe();
     return () => {
@@ -49,7 +53,9 @@ export default function ConfirmationsPage() {
 
   const responseOf = (guest: ConfirmationGuest) => Array.isArray(guest.rsvps) ? guest.rsvps[0] ?? null : guest.rsvps;
   const people = guestsQ.data;
-  const confirmed = people.filter((guest) => responseOf(guest)?.attending).length;
+  const confirmedGuests = people.filter((guest) => !guest.is_plus_one && responseOf(guest)?.attending).length;
+  const confirmedAdditional = people.filter((guest) => guest.is_plus_one && responseOf(guest)?.attending).length;
+  const confirmed = confirmedGuests + confirmedAdditional;
   const declined = people.filter((guest) => responseOf(guest) && !responseOf(guest)?.attending).length;
   const pending = people.length - confirmed - declined;
   const filtered = useMemo(() => people.filter((guest) => {
@@ -84,7 +90,10 @@ export default function ConfirmationsPage() {
     if (value === "pendiente") {
       const { error: deleteError } = await supabase.from("rsvps").delete().eq("guest_id", guest.id);
       if (deleteError) setError(deleteError.message);
-      else await guestsQ.reload();
+      else {
+        await guestsQ.reload();
+        void notifyCollaborators("rsvp_changed", `${guest.first_name} ${guest.last_name}`);
+      }
       return;
     }
     const existing = responseOf(guest);
@@ -99,7 +108,10 @@ export default function ConfirmationsPage() {
       responded_at: new Date().toISOString(),
     }, { onConflict: "guest_id" });
     if (upsertError) setError(upsertError.message);
-    else await guestsQ.reload();
+    else {
+      await guestsQ.reload();
+      void notifyCollaborators("rsvp_changed", `${guest.first_name} ${guest.last_name}`);
+    }
   }
 
   function exportGuests() {
@@ -119,11 +131,11 @@ export default function ConfirmationsPage() {
   const deadline = settingsQ.data?.rsvp_deadline;
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/confirmaciones" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/confirmaciones").map(([href, label, icon]) => <Link className={`nav-link ${href === "/confirmaciones" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Respuestas en tiempo real</div><h1 className="page-title">Confirmaciones</h1><p className="page-subtitle">{deadline ? `Fecha límite: ${new Intl.DateTimeFormat("es-CL", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${deadline}T00:00:00Z`))}` : "Sin fecha límite configurada"}</p></div><div className="row wrap"><button className="btn btn-secondary no-print" onClick={() => window.print()}><Icon name="printer" />Imprimir / PDF</button><button className="btn btn-secondary" onClick={exportGuests}><Icon name="download" />Exportar invitados</button><button className="btn btn-primary" onClick={() => void createQr()} disabled={qrLoading}><Icon name="qr" />{qrLoading ? "Generando…" : "QR general"}</button></div></header>
       {error && <p className="error-box mb-2" role="alert">{error}</p>}
-      <section className="grid grid-3 mb-2"><article className="card stat"><div className="stat-icon sage"><Icon name="check" /></div><div className="stat-label">Asistirán</div><div className="stat-value">{confirmed}</div><div className="stat-hint">Personas confirmadas</div></article><article className="card stat"><div className="stat-icon mauve"><Icon name="x" /></div><div className="stat-label">No asistirán</div><div className="stat-value">{declined}</div><div className="stat-hint">Respuestas negativas</div></article><article className="card stat"><div className="stat-icon gold"><Icon name="clock" /></div><div className="stat-label">Pendientes</div><div className="stat-value">{pending}</div><div className="stat-hint">De {people.length} invitados</div></article></section>
+      <section className="grid grid-3 mb-2"><article className="card stat"><div className="stat-icon sage"><Icon name="check" /></div><div className="stat-label">Invitados confirmados</div><div className="stat-value">{confirmedGuests}</div><div className="stat-hint">Personas principales</div></article><article className="card stat"><div className="stat-icon sage"><Icon name="check" /></div><div className="stat-label">Adicionales confirmados</div><div className="stat-value">{confirmedAdditional}</div><div className="stat-hint">Acompañantes que asistirán</div></article><article className="card stat"><div className="stat-icon sage"><Icon name="check" /></div><div className="stat-label">Total confirmados</div><div className="stat-value">{confirmed}</div><div className="stat-hint">Invitados y adicionales</div></article><article className="card stat"><div className="stat-icon mauve"><Icon name="x" /></div><div className="stat-label">No asistirán</div><div className="stat-value">{declined}</div><div className="stat-hint">Respuestas negativas</div></article><article className="card stat"><div className="stat-icon gold"><Icon name="clock" /></div><div className="stat-label">Pendientes</div><div className="stat-value">{pending}</div><div className="stat-hint">De {people.length} invitados</div></article></section>
       <section className="grid grid-2 mb-2"><article className="card"><div className="card-title"><h2>Restricciones alimentarias</h2><button className="btn btn-secondary btn-sm" onClick={exportMenu}><Icon name="download" />Exportar menú</button></div>{Object.keys(dietarySummary).length ? <div className="list">{Object.entries(dietarySummary).map(([dietary, count]) => <div className="list-item" key={dietary}><Icon name="utensils" /><strong className="grow">{dietaryLabels[dietary as Rsvp["dietary"]]}</strong><span className="badge sage">{count}</span></div>)}{people.filter((guest) => responseOf(guest)?.attending && responseOf(guest)?.dietary_notes).map((guest) => <div className="small muted" key={guest.id}>{guest.first_name} {guest.last_name}: {responseOf(guest)?.dietary_notes}</div>)}</div> : <p className="muted small">No hay restricciones alimentarias informadas.</p>}</article><article className="card"><div className="card-title"><h2>Enlaces por grupo</h2><small>{groupsQ.data.length} invitaciones</small></div>{groupsQ.data.length ? <div className="list">{groupsQ.data.map((group) => <div className="list-item" key={group.id}><div className="grow"><strong>{group.name}</strong><div className="tiny muted">Código: {group.invite_code}</div></div><button className="btn btn-ghost btn-icon" title={`Generar QR para ${group.name}`} aria-label={`Generar QR para ${group.name}`} onClick={() => void createQr(group)} disabled={qrLoading}><Icon name="qr" /></button><Link className="btn btn-ghost btn-icon" href={`/confirmar/${group.invite_code}`} target="_blank" title={`Abrir invitación de ${group.name}`}><Icon name="link" /></Link></div>)}</div> : <p className="muted small">Crea grupos familiares en Invitados para generar enlaces personalizados.</p>}</article></section>
       <section className="card"><div className="row-between wrap mb-2"><Segmented value={filter} onChange={setFilter} options={[{ value: "todos", label: "Todos", count: people.length }, { value: "pendiente", label: "Pendientes", count: pending }, { value: "si", label: "Asisten", count: confirmed }, { value: "no", label: "No asisten", count: declined }]} /><label className="field"><span className="label">Buscar</span><input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre o apellido" /></label></div>{filtered.length ? <div style={{ overflowX: "auto" }}><table className="table"><thead><tr><th>Invitado</th><th>Grupo</th><th>Respuesta</th><th>Alimentación</th><th>Fuente</th></tr></thead><tbody>{filtered.map((guest) => { const response = responseOf(guest); return <tr key={guest.id}><td><strong>{guest.first_name} {guest.last_name}</strong>{guest.is_plus_one && <div className="tiny muted">Acompañante</div>}</td><td>{groupsQ.data.find((group) => group.id === guest.group_id)?.name ?? "Sin grupo"}</td><td><select className="select" aria-label={`Respuesta de ${guest.first_name} ${guest.last_name}`} value={!response ? "pendiente" : response.attending ? "si" : "no"} onChange={(event) => void updateResponse(guest, event.target.value)}><option value="pendiente">Pendiente</option><option value="si">Asiste</option><option value="no">No asiste</option></select></td><td>{response?.attending ? <>{dietaryLabels[response.dietary]}{response.dietary_notes ? <div className="tiny muted">{response.dietary_notes}</div> : null}</> : "—"}</td><td>{response?.source === "manual" ? "Manual" : response ? "Formulario" : "—"}</td></tr>; })}</tbody></table></div> : <EmptyState icon="mail" title="No hay respuestas en este filtro" text="Las respuestas del formulario aparecerán aquí automáticamente." />}</section>
     </div></main>

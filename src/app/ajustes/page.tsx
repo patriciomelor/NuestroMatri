@@ -6,7 +6,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "@/components/Icon";
 import { PushNotifications } from "@/components/PushNotifications";
 import { createClient } from "@/lib/supabase/client";
-import type { GuestSide, WeddingSettings } from "@/lib/types";
+import { notifyCollaborators } from "@/lib/push-notifications";
+import type { GuestSide, ProfileRole, WeddingSettings } from "@/lib/types";
 
 const fallbackSettings: WeddingSettings = {
   id: 1,
@@ -38,6 +39,9 @@ export default function SettingsPage() {
   const [profileSide, setProfileSide] = useState<GuestSide | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<Exclude<ProfileRole, "couple">>("bridesmaid");
+  const [inviteSaving, setInviteSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -108,8 +112,28 @@ export default function SettingsPage() {
       }));
       setProfileSide(nextSide);
       setNotice("Ajustes guardados.");
+      void notifyCollaborators("settings_updated");
     }
     setSaving(false);
+  }
+
+  async function inviteUser() {
+    setInviteSaving(true);
+    setNotice("");
+    setError("");
+    const response = await fetch("/api/admin/invitations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+    });
+    const result = await response.json().catch(() => ({})) as { error?: string };
+    if (!response.ok) setError(result.error ?? "No pudimos enviar la invitación.");
+    else {
+      setInviteEmail("");
+      setNotice("Invitación enviada. La persona recibirá un enlace para activar su cuenta.");
+      void notifyCollaborators("collaborator_invited", inviteRole === "wedding_planner" ? "Wedding planner" : "Dama de honor");
+    }
+    setInviteSaving(false);
   }
 
   const menu = [
@@ -159,6 +183,15 @@ export default function SettingsPage() {
               </div>
             </section>
             <section className="card stack"><div className="card-title"><h2>Notificaciones</h2></div><PushNotifications /></section>
+            <section className="card stack">
+              <div className="card-title"><h2>Acceso al panel</h2></div>
+              <p className="small muted">Invita personas por correo y asigna qué módulos podrán administrar.</p>
+              <div className="form-grid">
+                <label className="field"><span className="label">Correo electrónico</span><input className="input" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="nombre@correo.com" /></label>
+                <label className="field"><span className="label">Rol</span><select className="select" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Exclude<ProfileRole, "couple">)}><option value="wedding_planner">Wedding planner</option><option value="bridesmaid">Dama de honor</option></select></label>
+              </div>
+              <div><button className="btn btn-secondary" type="button" onClick={() => void inviteUser()} disabled={inviteSaving || !inviteEmail.trim()}><Icon name="userPlus" />{inviteSaving ? "Enviando…" : "Enviar invitación"}</button></div>
+            </section>
             {error && <p className="error-box" role="alert">{error}</p>}
             {notice && <p className="success-box" role="status">{notice}</p>}
             <div className="form-actions"><button className="btn btn-primary" type="submit" disabled={saving}><Icon name="check" />{saving ? "Guardando…" : "Guardar ajustes"}</button></div>

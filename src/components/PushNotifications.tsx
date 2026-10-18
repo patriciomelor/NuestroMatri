@@ -40,7 +40,7 @@ export function PushNotifications() {
       });
       if (!response.ok) throw new Error("No pudimos guardar este dispositivo. Revisa tu sesión.");
       setSubscribed(true);
-      setMessage("Este dispositivo recibirá avisos de nuevas confirmaciones.");
+      setMessage("Este dispositivo recibirá avisos de cambios en la planificación.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No pudimos activar las notificaciones.");
     }
@@ -81,5 +81,5 @@ export function PushNotifications() {
     setBusy(false);
   }
 
-  return <div className="stack"><p className="small muted">Recibe avisos en los dispositivos registrados cuando llegan nuevas respuestas RSVP. La entrega requiere claves VAPID en el entorno.</p><div className="row wrap">{subscribed ? <><button className="btn btn-primary" type="button" onClick={() => void sendTest()} disabled={busy}><Icon name="bell" />{busy ? "Enviando…" : "Enviar prueba"}</button><button className="btn btn-secondary" type="button" onClick={() => void disable()} disabled={busy}>Desactivar</button></> : <button className="btn btn-primary" type="button" onClick={() => void enable()} disabled={busy}><Icon name="bell" />{busy ? "Activando…" : "Activar en este dispositivo"}</button>}</div>{error && <p className="error-box" role="alert">{error}</p>}{message && <p className="info-box" role="status">{message}</p>}</div>;
+  return <div className="stack"><p className="small muted">Recibe avisos en este dispositivo cuando otros usuarios registren cambios. La entrega requiere claves VAPID en el entorno.</p><div className="row wrap">{subscribed ? <><button className="btn btn-primary" type="button" onClick={() => void sendTest()} disabled={busy}><Icon name="bell" />{busy ? "Enviando…" : "Enviar prueba"}</button><button className="btn btn-secondary" type="button" onClick={() => void disable()} disabled={busy}>Desactivar</button></> : <button className="btn btn-primary" type="button" onClick={() => void enable()} disabled={busy}><Icon name="bell" />{busy ? "Activando…" : "Activar en este dispositivo"}</button>}</div>{error && <p className="error-box" role="alert">{error}</p>}{message && <p className="info-box" role="status">{message}</p>}</div>;
 }
