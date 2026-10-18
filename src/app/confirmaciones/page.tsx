@@ -8,6 +8,8 @@ import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { downloadCSV } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, GuestGroup, Rsvp, WeddingSettings } from "@/lib/types";
 
@@ -18,6 +20,7 @@ const dietaryLabels: Record<Rsvp["dietary"], string> = { ninguna: "Sin restricci
 
 export default function ConfirmationsPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const guestsQ = useLive<ConfirmationGuest[]>(() => rows<ConfirmationGuest>(supabase.from("guests").select("*, rsvps(*)").order("first_name")), ["guests", "rsvps"], []);
   const groupsQ = useLive<GuestGroup[]>(() => rows<GuestGroup>(supabase.from("guest_groups").select("*").order("name")), ["guest_groups"], []);
   const settingsQ = useLive<WeddingSettings | null>(async () => {
@@ -121,7 +124,7 @@ export default function ConfirmationsPage() {
   const deadline = settingsQ.data?.rsvp_deadline;
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/confirmaciones" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/confirmaciones").map(([href, label, icon]) => <Link className={`nav-link ${href === "/confirmaciones" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Respuestas en tiempo real</div><h1 className="page-title">Confirmaciones</h1><p className="page-subtitle">{deadline ? `Fecha límite: ${new Intl.DateTimeFormat("es-CL", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${deadline}T00:00:00Z`))}` : "Sin fecha límite configurada"}</p></div><div className="row wrap"><button className="btn btn-secondary no-print" onClick={() => window.print()}><Icon name="printer" />Imprimir / PDF</button><button className="btn btn-secondary" onClick={exportGuests}><Icon name="download" />Exportar invitados</button><button className="btn btn-primary" onClick={() => void createQr()} disabled={qrLoading}><Icon name="qr" />{qrLoading ? "Generando…" : "QR general"}</button></div></header>
       {error && <p className="error-box mb-2" role="alert">{error}</p>}

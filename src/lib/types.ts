@@ -1,11 +1,13 @@
 export type Side = "novio" | "novia";
 export type GuestSide = Side | "comun";
 export type Who = Side | "ambos";
+export type ProfileRole = "couple" | "wedding_planner" | "bridesmaid";
 
 export interface Profile {
   id: string;
   display_name: string;
   side: Side | null;
+  role: ProfileRole;
 }
 
 export interface WeddingSettings {

@@ -6,21 +6,24 @@ import { useState, type DragEvent, type FormEvent } from "react";
 import { EmptyState, Modal } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, Rsvp, SeatingTable } from "@/lib/types";
 
-type SeatedGuest = Guest & { rsvps: Pick<Rsvp, "attending">[] | null };
+type SeatedGuest = Guest & { rsvps: Pick<Rsvp, "attending">[] | Pick<Rsvp, "attending"> | null };
 const menu = [["/", "Resumen", "home"], ["/presupuesto", "Presupuesto", "wallet"], ["/tareas", "Tareas", "checkSquare"], ["/acuerdos", "Acuerdos", "handshake"], ["/invitados", "Invitados", "users"], ["/confirmaciones", "Confirmaciones", "mail"], ["/mesas", "Mesas", "table"], ["/regalos", "Regalos", "gift"], ["/cronograma", "Cronograma", "calendar"]] as const;
 
 export default function SeatingPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const tablesQ = useLive<SeatingTable[]>(() => rows<SeatingTable>(supabase.from("seating_tables").select("*").order("sort").order("name")), ["seating_tables"], []);
   const guestsQ = useLive<SeatedGuest[]>(() => rows<SeatedGuest>(supabase.from("guests").select("*, rsvps(attending)").order("first_name")), ["guests", "rsvps"], []);
   const [modalOpen, setModalOpen] = useState(false);
   const [draggingId, setDraggingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const confirmed = guestsQ.data.filter((guest) => guest.rsvps?.some((rsvp) => rsvp.attending));
+  const confirmed = guestsQ.data.filter((guest) => Array.isArray(guest.rsvps) ? guest.rsvps.some((rsvp) => rsvp.attending) : guest.rsvps?.attending);
   const unassigned = confirmed.filter((guest) => !guest.table_id);
 
   async function addTable(event: FormEvent<HTMLFormElement>) {
@@ -61,7 +64,7 @@ export default function SeatingPage() {
   }
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/mesas" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/mesas").map(([href, label, icon]) => <Link className={`nav-link ${href === "/mesas" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Distribución de invitados</div><h1 className="page-title">Mesas</h1><p className="page-subtitle">Arrastra invitados confirmados a una mesa o asígnalos desde el selector.</p></div><button className="btn btn-primary" onClick={() => setModalOpen(true)}><Icon name="plus" />Nueva mesa</button></header>
       {error && <p className="error-box mb-2" role="alert">{error}</p>}

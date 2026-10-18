@@ -6,6 +6,8 @@ import { useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Category, Task, TaskStatus, WeddingSettings, Who } from "@/lib/types";
 
@@ -16,6 +18,7 @@ type CategoryOption = Pick<Category, "id" | "name">;
 
 export default function TasksPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const tasksQ = useLive<Task[]>(() => rows<Task>(supabase.from("tasks").select("*").order("due_date", { ascending: true, nullsFirst: false })), ["tasks"], []);
   const categoriesQ = useLive<CategoryOption[]>(() => rows<CategoryOption>(supabase.from("categories").select("id,name").order("name")), ["categories"], []);
   const settingsQ = useLive<WeddingSettings | null>(async () => {
@@ -102,7 +105,7 @@ export default function TasksPage() {
   const assigneeLabel: Record<Who, string> = { novio: "Pato", novia: "Andrea", ambos: "Ambos" };
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/tareas" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role ? role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/tareas").map(([href, label, icon]) => <Link className={`nav-link ${href === "/tareas" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Pendientes y próximos hitos</div><h1 className="page-title">Tareas</h1><p className="page-subtitle">Coordinen qué falta, quién lo lleva y para cuándo.</p></div><div className="row wrap"><button className="btn btn-secondary" onClick={() => void addChecklist()} disabled={checklistLoading}><Icon name="download" />{checklistLoading ? "Cargando…" : "Checklist base"}</button><button className="btn btn-primary" onClick={() => { setError(""); setModalOpen(true); }}><Icon name="plus" />Nueva tarea</button></div></header>
       {error && <p className="error-box" role="alert">{error}</p>}{notice && <p className="success-box" role="status">{notice}</p>}

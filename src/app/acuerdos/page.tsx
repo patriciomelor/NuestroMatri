@@ -14,7 +14,7 @@ const menu = [["/", "Resumen", "home"], ["/presupuesto", "Presupuesto", "wallet"
 export default function AgreementsPage() {
   const supabase = createClient();
   const agreementsQ = useLive<Agreement[]>(() => rows<Agreement>(supabase.from("agreements").select("*").order("created_at", { ascending: false })), ["agreements"], []);
-  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side")), ["profiles"], []);
+  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side,role")), ["profiles"], []);
   const [userId, setUserId] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [filter, setFilter] = useState<"todos" | "propuesto" | "aprobado">("todos");

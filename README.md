@@ -24,6 +24,8 @@ Aplicación privada para planificar la boda de Pato y Andrea, con panel de organ
 
 4. Inicia sesión con cada cuenta y entra a **Ajustes** para asignar el lado de la cuenta: Pato o Andrea. La fecha inicial es el 22 de marzo de 2027 y se puede modificar ahí.
 
+5. Para habilitar roles y las invitaciones desde **Ajustes**, ejecuta también [`supabase/migrations/0002_user_roles.sql`](supabase/migrations/0002_user_roles.sql) y configura `SUPABASE_SECRET_KEY` solo en el servidor. Agrega la URL de despliegue terminada en `/auth/set-password` a **Authentication → URL Configuration → Redirect URLs** de Supabase. La pareja puede invitar wedding planners (invitados, confirmaciones, tareas, cronograma y mesas) y damas de honor (tareas y cronograma).
+
 ## Desarrollo y validación
 
 ```bash

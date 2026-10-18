@@ -40,7 +40,7 @@ export function AppDataProvider({ userId, children }: { userId: string; children
   const supabase = createClient();
 
   const profilesQ = useLive<Profile[]>(
-    () => rows<Profile>(supabase.from("profiles").select("id, display_name, side")),
+    () => rows<Profile>(supabase.from("profiles").select("id, display_name, side, role")),
     ["profiles"],
     []
   );

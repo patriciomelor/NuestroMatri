@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { roleCanAccessPath } from "@/lib/roles";
+import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
 import type { Guest, GuestGroup, GuestSide, Profile, Rsvp } from "@/lib/types";
 
@@ -15,9 +17,10 @@ const sides: { value: GuestSide; label: string }[] = [{ value: "novio", label: "
 
 export default function GuestsPage() {
   const supabase = createClient();
+  const role = useProfileRole();
   const guestsQ = useLive<GuestRow[]>(() => rows<GuestRow>(supabase.from("guests").select("*, rsvps(attending)").order("first_name")), ["guests", "rsvps"], []);
   const groupsQ = useLive<GuestGroup[]>(() => rows<GuestGroup>(supabase.from("guest_groups").select("*").order("name")), ["guest_groups"], []);
-  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side")), ["profiles"], []);
+  const profilesQ = useLive<Profile[]>(() => rows<Profile>(supabase.from("profiles").select("id,display_name,side,role")), ["profiles"], []);
   const [userId, setUserId] = useState("");
   const [groupModal, setGroupModal] = useState(false);
   const [guestModal, setGuestModal] = useState(false);
@@ -107,7 +110,7 @@ export default function GuestsPage() {
   const groupName = (id: string | null) => groupsQ.data.find((group) => group.id === id)?.name ?? "Sin grupo";
 
   return <div className="app-shell">
-    <aside className="sidebar"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.map(([href, label, icon]) => <Link className={`nav-link ${href === "/invitados" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}<div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></aside>
+    <aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/invitados").map(([href, label, icon]) => <Link className={`nav-link ${href === "/invitados" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside>
     <main className="main"><div className="mobile-top"><Link className="brand" href="/"><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
       <header className="page-header"><div><div className="page-eyebrow">Lista y confirmaciones</div><h1 className="page-title">Invitados</h1><p className="page-subtitle">Organicen por familia, lado y respuesta.</p></div><div className="row wrap"><button className="btn btn-secondary" onClick={() => setGroupModal(true)}><Icon name="users" />Nuevo grupo</button><button className="btn btn-primary" onClick={() => { setError(""); setGuestModal(true); }}><Icon name="userPlus" />Agregar invitado</button></div></header>
       {error && <p className="error-box" role="alert">{error}</p>}{notice && <p className="success-box" role="status">{notice}</p>}
