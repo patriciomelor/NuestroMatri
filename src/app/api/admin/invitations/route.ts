@@ -21,9 +21,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return Response.json({ error: "Configura SUPABASE_SECRET_KEY o SUPABASE_SERVICE_ROLE_KEY en el entorno del servidor." }, { status: 503 });
 
-  const publicOrigin = process.env.APP_URL ?? process.env.VERCEL_PROJECT_PRODUCTION_URL ?? "https://matripatoyandre.app";
-  const normalizedOrigin = publicOrigin.startsWith("http") ? publicOrigin : `https://${publicOrigin}`;
-  const redirectTo = new URL("/auth/set-password", normalizedOrigin).toString();
+  const redirectTo = new URL("/auth/set-password", "https://matripatoyandre.app").toString();
   const { data: invitation, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { display_name: email.split("@")[0] },
     redirectTo,
