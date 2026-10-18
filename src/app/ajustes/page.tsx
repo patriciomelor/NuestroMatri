@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Icon } from "@/components/Icon";
 import { PushNotifications } from "@/components/PushNotifications";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import type { GuestSide, ProfileRole, WeddingSettings } from "@/lib/types";
 
 const fallbackSettings: WeddingSettings = {
@@ -111,6 +112,7 @@ export default function SettingsPage() {
       }));
       setProfileSide(nextSide);
       setNotice("Ajustes guardados.");
+      void notifyCollaborators("settings_updated");
     }
     setSaving(false);
   }
@@ -129,6 +131,7 @@ export default function SettingsPage() {
     else {
       setInviteEmail("");
       setNotice("Invitación enviada. La persona recibirá un enlace para activar su cuenta.");
+      void notifyCollaborators("collaborator_invited", inviteRole === "wedding_planner" ? "Wedding planner" : "Dama de honor");
     }
     setInviteSaving(false);
   }

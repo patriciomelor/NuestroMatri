@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { rows, useLive } from "@/lib/useLive";
 import type { Agreement, Profile } from "@/lib/types";
 
@@ -46,6 +47,7 @@ export default function AgreementsPage() {
       setModalOpen(false);
       setNotice("Acuerdo registrado.");
       await agreementsQ.reload();
+      void notifyCollaborators("agreement_added", String(data.get("title") ?? "").trim());
     }
     setSaving(false);
   }
@@ -65,13 +67,19 @@ export default function AgreementsPage() {
       decided_at: approved ? new Date().toISOString() : null,
     }).eq("id", agreement.id);
     if (updateError) setError(updateError.message);
-    else await agreementsQ.reload();
+    else {
+      await agreementsQ.reload();
+      void notifyCollaborators("agreement_updated", agreement.title);
+    }
   }
 
   async function discard(agreement: Agreement) {
     const { error: updateError } = await supabase.from("agreements").update({ status: "descartado" }).eq("id", agreement.id);
     if (updateError) setError(updateError.message);
-    else await agreementsQ.reload();
+    else {
+      await agreementsQ.reload();
+      void notifyCollaborators("agreement_updated", agreement.title);
+    }
   }
 
   return <div className="app-shell">

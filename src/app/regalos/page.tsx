@@ -7,6 +7,7 @@ import { EmptyState, Modal } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { downloadCSV } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { rows, useLive } from "@/lib/useLive";
 import type { Gift, Guest } from "@/lib/types";
 
@@ -38,14 +39,17 @@ export default function GiftsPage() {
       notes: String(data.get("notes") ?? "").trim() || null,
     });
     if (insertError) setError(insertError.message);
-    else { form.reset(); setModalOpen(false); await giftsQ.reload(); }
+    else { form.reset(); setModalOpen(false); await giftsQ.reload(); void notifyCollaborators("gift_added", String(data.get("giver_name") ?? "").trim()); }
     setSaving(false);
   }
 
   async function toggleThanked(gift: Gift) {
     const { error: updateError } = await supabase.from("gifts").update({ thanked: !gift.thanked }).eq("id", gift.id);
     if (updateError) setError(updateError.message);
-    else await giftsQ.reload();
+    else {
+      await giftsQ.reload();
+      void notifyCollaborators("gift_updated", gift.giver_name);
+    }
   }
 
   function exportGifts() {

@@ -6,6 +6,7 @@ import { useState, type DragEvent, type FormEvent } from "react";
 import { EmptyState, Modal } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { roleCanAccessPath } from "@/lib/roles";
 import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
@@ -38,7 +39,7 @@ export default function SeatingPage() {
       sort: tablesQ.data.length,
     });
     if (insertError) setError(insertError.message);
-    else { form.reset(); setModalOpen(false); await tablesQ.reload(); }
+    else { form.reset(); setModalOpen(false); await tablesQ.reload(); void notifyCollaborators("table_added", String(data.get("name") ?? "").trim()); }
     setSaving(false);
   }
 
@@ -46,7 +47,10 @@ export default function SeatingPage() {
     setError("");
     const { error: updateError } = await supabase.from("guests").update({ table_id: tableId }).eq("id", guestId);
     if (updateError) setError(updateError.message);
-    else await guestsQ.reload();
+    else {
+      await guestsQ.reload();
+      void notifyCollaborators("table_updated", "Asignación de invitados");
+    }
   }
 
   function dropGuest(event: DragEvent<HTMLElement>, tableId: string | null) {
@@ -60,7 +64,10 @@ export default function SeatingPage() {
     if (!window.confirm(`¿Eliminar ${table.name}? Los invitados quedarán sin mesa.`)) return;
     const { error: deleteError } = await supabase.from("seating_tables").delete().eq("id", table.id);
     if (deleteError) setError(deleteError.message);
-    else await Promise.all([tablesQ.reload(), guestsQ.reload()]);
+    else {
+      await Promise.all([tablesQ.reload(), guestsQ.reload()]);
+      void notifyCollaborators("table_removed", table.name);
+    }
   }
 
   return <div className="app-shell">

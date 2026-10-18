@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icon";
 import { downloadCSV } from "@/lib/csv";
 import { formatMoney } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { rows, useLive } from "@/lib/useLive";
 import type { Category, Expense, ExpenseStatus, Payment, Vendor, WeddingSettings } from "@/lib/types";
 
@@ -106,6 +107,7 @@ export default function BudgetPage() {
         return;
       }
       category = data as Category;
+      void notifyCollaborators("category_added", category.name);
     }
 
     const { data: expense, error: insertError } = await supabase.from("expenses").insert({
@@ -137,6 +139,7 @@ export default function BudgetPage() {
       if (attachmentWarning) setError(attachmentWarning);
       else setNotice("Gasto agregado.");
       await Promise.all([expensesQ.reload(), categoriesQ.reload()]);
+      void notifyCollaborators("expense_added", String(formData.get("description") ?? "").trim());
     }
     setSaving(false);
   }
@@ -174,6 +177,7 @@ export default function BudgetPage() {
       if (attachmentWarning) setError(attachmentWarning);
       else setNotice("Proveedor agregado.");
       await vendorsQ.reload();
+      void notifyCollaborators("vendor_added", String(data.get("name") ?? "").trim());
     }
     setSaving(false);
   }
@@ -197,6 +201,7 @@ export default function BudgetPage() {
       form.reset();
       await paymentsQ.reload();
       setNotice("Cuota programada.");
+      void notifyCollaborators("payment_added", String(data.get("label") ?? "Cuota").trim());
     }
     setSaving(false);
   }
@@ -205,7 +210,10 @@ export default function BudgetPage() {
     const paid_at = payment.paid_at ? null : new Date().toISOString().slice(0, 10);
     const { error: updateError } = await supabase.from("payments").update({ paid_at }).eq("id", payment.id);
     if (updateError) setError("No pudimos actualizar el estado de la cuota.");
-    else await paymentsQ.reload();
+    else {
+      await paymentsQ.reload();
+      void notifyCollaborators("payment_updated", payment.label);
+    }
   }
 
   function exportExpenses() {
@@ -219,13 +227,17 @@ export default function BudgetPage() {
     else {
       setNotice("Gasto eliminado.");
       await Promise.all([expensesQ.reload(), paymentsQ.reload()]);
+      void notifyCollaborators("expense_removed", expense.description);
     }
   }
 
   async function updateVendorStatus(vendor: Vendor, status: Vendor["status"]) {
     const { error: updateError } = await supabase.from("vendors").update({ status }).eq("id", vendor.id);
     if (updateError) setError(updateError.message);
-    else await vendorsQ.reload();
+    else {
+      await vendorsQ.reload();
+      void notifyCollaborators("vendor_updated", vendor.name);
+    }
   }
 
   async function updateCategoryBudget(categoryId: string, value: string) {
@@ -233,7 +245,10 @@ export default function BudgetPage() {
     if (!Number.isFinite(amount) || amount < 0) return;
     const { error: updateError } = await supabase.from("categories").update({ budget: amount }).eq("id", categoryId);
     if (updateError) setError("No pudimos actualizar el presupuesto de la categoría.");
-    else await categoriesQ.reload();
+    else {
+      await categoriesQ.reload();
+      void notifyCollaborators("category_updated");
+    }
   }
 
   async function openDocument(path: string) {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { roleCanAccessPath } from "@/lib/roles";
 import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
@@ -59,6 +60,7 @@ export default function GuestsPage() {
       setGroupModal(false);
       setNotice("Grupo familiar agregado.");
       await groupsQ.reload();
+      void notifyCollaborators("group_added", String(data.get("name") ?? "").trim());
     }
     setSaving(false);
   }
@@ -86,6 +88,7 @@ export default function GuestsPage() {
       setGuestModal(false);
       setNotice("Invitado agregado.");
       await guestsQ.reload();
+      void notifyCollaborators("guest_added", `${String(data.get("first_name") ?? "").trim()} ${String(data.get("last_name") ?? "").trim()}`.trim());
     }
     setSaving(false);
   }
@@ -104,7 +107,10 @@ export default function GuestsPage() {
     if (!window.confirm(`¿Eliminar a ${guest.first_name} ${guest.last_name}?`)) return;
     const { error: deleteError } = await supabase.from("guests").delete().eq("id", guest.id);
     if (deleteError) setError(deleteError.message);
-    else await guestsQ.reload();
+    else {
+      await guestsQ.reload();
+      void notifyCollaborators("guest_removed", `${guest.first_name} ${guest.last_name}`);
+    }
   }
 
   const groupName = (id: string | null) => groupsQ.data.find((group) => group.id === id)?.name ?? "Sin grupo";

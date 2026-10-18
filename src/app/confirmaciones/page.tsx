@@ -8,6 +8,7 @@ import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { downloadCSV } from "@/lib/csv";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { roleCanAccessPath } from "@/lib/roles";
 import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
@@ -41,7 +42,7 @@ export default function ConfirmationsPage() {
       if ((payload.new as Rsvp | undefined)?.source !== "formulario") return;
       if (notificationTimer.current) clearTimeout(notificationTimer.current);
       notificationTimer.current = setTimeout(() => {
-        void fetch("/api/push/notify", { method: "POST" });
+        void notifyCollaborators("rsvp_received");
       }, 900);
     }).subscribe();
     return () => {
@@ -89,7 +90,10 @@ export default function ConfirmationsPage() {
     if (value === "pendiente") {
       const { error: deleteError } = await supabase.from("rsvps").delete().eq("guest_id", guest.id);
       if (deleteError) setError(deleteError.message);
-      else await guestsQ.reload();
+      else {
+        await guestsQ.reload();
+        void notifyCollaborators("rsvp_changed", `${guest.first_name} ${guest.last_name}`);
+      }
       return;
     }
     const existing = responseOf(guest);
@@ -104,7 +108,10 @@ export default function ConfirmationsPage() {
       responded_at: new Date().toISOString(),
     }, { onConflict: "guest_id" });
     if (upsertError) setError(upsertError.message);
-    else await guestsQ.reload();
+    else {
+      await guestsQ.reload();
+      void notifyCollaborators("rsvp_changed", `${guest.first_name} ${guest.last_name}`);
+    }
   }
 
   function exportGuests() {

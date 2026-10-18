@@ -98,3 +98,8 @@ create policy "collaborator_categories_read" on public.categories for select to 
 drop policy if exists "collaborator_settings_read" on public.wedding_settings;
 create policy "collaborator_settings_read" on public.wedding_settings for select to authenticated
   using (public.has_role(array['wedding_planner', 'bridesmaid']));
+
+drop policy if exists "push_subscriptions_own" on public.push_subscriptions;
+create policy "push_subscriptions_own" on public.push_subscriptions for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());

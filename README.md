@@ -44,7 +44,7 @@ El RSVP general vive en `/confirmar`; los enlaces personales usan `/confirmar/CO
 
 ## Notificaciones push (opcional)
 
-Para registrar dispositivos y enviar notificaciones, configura en el entorno local y en Vercel:
+Para registrar dispositivos y enviar notificaciones entre usuarios, configura en el entorno local y en Vercel:
 
 ```env
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
@@ -52,7 +52,7 @@ VAPID_PRIVATE_KEY=...
 VAPID_SUBJECT=mailto:correo-verificado@example.com
 ```
 
-Genera un par VAPID propio y conserva `VAPID_PRIVATE_KEY` solo en el servidor. Después activa los avisos desde **Ajustes**. La notificación automática se dispara mientras el panel **Confirmaciones** está abierto; para notificar cuando no haya ninguna sesión abierta, falta conectar un webhook de Supabase a un emisor desplegado.
+Genera un par VAPID propio y conserva `VAPID_PRIVATE_KEY` solo en el servidor. Después de ejecutar la migración `0002_user_roles.sql`, cada usuario puede activar avisos desde **Ajustes** (pareja) o **Tareas** (planner y damas). Las operaciones del panel notifican a los demás usuarios con dispositivos suscritos. Las confirmaciones RSVP públicas se detectan mientras el panel **Confirmaciones** está abierto.
 
 ## Despliegue en Vercel
 

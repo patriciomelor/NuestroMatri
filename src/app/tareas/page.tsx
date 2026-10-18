@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { EmptyState, Modal, Segmented } from "@/components/ui";
 import { Icon } from "@/components/Icon";
+import { PushNotifications } from "@/components/PushNotifications";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { roleCanAccessPath } from "@/lib/roles";
 import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
@@ -52,6 +54,7 @@ export default function TasksPage() {
       setModalOpen(false);
       setNotice("Tarea agregada.");
       await tasksQ.reload();
+      void notifyCollaborators("task_added", String(data.get("title") ?? "").trim());
     }
     setSaving(false);
   }
@@ -60,14 +63,20 @@ export default function TasksPage() {
     const values = { ...update, ...(update.status === "lista" ? { completed_at: new Date().toISOString() } : update.status ? { completed_at: null } : {}) };
     const { error: updateError } = await supabase.from("tasks").update(values).eq("id", task.id);
     if (updateError) setError(updateError.message);
-    else await tasksQ.reload();
+    else {
+      await tasksQ.reload();
+      void notifyCollaborators("task_updated", task.title);
+    }
   }
 
   async function removeTask(task: Task) {
     if (!window.confirm(`¿Eliminar la tarea “${task.title}”?`)) return;
     const { error: deleteError } = await supabase.from("tasks").delete().eq("id", task.id);
     if (deleteError) setError(deleteError.message);
-    else await tasksQ.reload();
+    else {
+      await tasksQ.reload();
+      void notifyCollaborators("task_removed", task.title);
+    }
   }
 
   async function addChecklist() {
@@ -96,7 +105,7 @@ export default function TasksPage() {
     else {
       const { error: insertError } = await supabase.from("tasks").insert(tasks);
       if (insertError) setError(insertError.message);
-      else { setNotice("Checklist agregada. Ajusten responsables y fechas según sus planes."); await tasksQ.reload(); }
+      else { setNotice("Checklist agregada. Ajusten responsables y fechas según sus planes."); await tasksQ.reload(); void notifyCollaborators("task_added", "Checklist de planificación"); }
     }
     setChecklistLoading(false);
   }
@@ -112,6 +121,7 @@ export default function TasksPage() {
       <section className="card"><div className="row-between wrap mb-2"><Segmented value={view} onChange={setView} options={[{ value: "lista", label: "Lista", count: tasksQ.data.length }, { value: "kanban", label: "Kanban" }]} /><div className="row small muted">{tasksQ.data.filter((task) => task.status !== "lista").length} pendientes · {tasksQ.data.filter((task) => task.status === "lista").length} listas</div></div>
         {!tasksQ.data.length ? <EmptyState icon="checkSquare" title="La lista está despejada" text="Agreguen su primera tarea para empezar a organizar el camino al gran día." action={<button className="btn btn-primary" onClick={() => setModalOpen(true)}><Icon name="plus" />Agregar tarea</button>} /> : view === "lista" ? <div style={{ overflowX: "auto" }}><table className="table"><thead><tr><th>Tarea</th><th>Responsable</th><th>Prioridad</th><th>Fecha límite</th><th>Estado</th><th aria-label="Acciones" /></tr></thead><tbody>{tasksQ.data.map((task) => <tr key={task.id}><td><strong>{task.title}</strong>{task.description && <div className="tiny muted">{task.description}</div>}</td><td><select className="select" aria-label={`Responsable de ${task.title}`} value={task.assignee} onChange={(event) => void updateTask(task, { assignee: event.target.value as Who })}><option value="novio">Pato</option><option value="novia">Andrea</option><option value="ambos">Ambos</option></select></td><td><select className="select" aria-label={`Prioridad de ${task.title}`} value={task.priority} onChange={(event) => void updateTask(task, { priority: event.target.value as Task["priority"] })}>{priorityOptions.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</select></td><td>{dateLabel(task.due_date)}</td><td><select className="select" aria-label={`Estado de ${task.title}`} value={task.status} onChange={(event) => void updateTask(task, { status: event.target.value as TaskStatus })}>{statusOptions.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select></td><td><button className="btn btn-ghost btn-icon danger-text" title="Eliminar tarea" aria-label={`Eliminar ${task.title}`} onClick={() => void removeTask(task)}><Icon name="trash" /></button></td></tr>)}</tbody></table></div> : <div className="grid grid-3">{statusOptions.map((status) => <section className="stack" key={status.value}><div className="row-between"><h2 className="serif">{status.label}</h2><span className="badge muted">{tasksQ.data.filter((task) => task.status === status.value).length}</span></div>{tasksQ.data.filter((task) => task.status === status.value).map((task) => <article className="card" key={task.id}><div className="row-between"><span className={`badge ${task.priority === "alta" ? "danger" : task.priority === "baja" ? "sage" : "mauve"}`}>{task.priority}</span><button className="btn btn-ghost btn-icon danger-text" aria-label={`Eliminar ${task.title}`} onClick={() => void removeTask(task)}><Icon name="trash" /></button></div><h3 className="mt-1">{task.title}</h3>{task.description && <p className="small muted mt-1">{task.description}</p>}<div className="row-between small muted mt-2"><span>{assigneeLabel[task.assignee]}</span><span>{dateLabel(task.due_date)}</span></div><select className="select mt-2" aria-label={`Cambiar estado de ${task.title}`} value={task.status} onChange={(event) => void updateTask(task, { status: event.target.value as TaskStatus })}>{statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></article>)}</section>)}</div>}
       </section>
+      <section className="card stack"><div className="card-title"><h2>Notificaciones</h2></div><PushNotifications /></section>
     </div></main>
     <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Nueva tarea" footer={<><button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button><button className="btn btn-primary" type="submit" form="task-form" disabled={saving}><Icon name="check" />{saving ? "Guardando…" : "Guardar tarea"}</button></>}><form id="task-form" className="form-grid" onSubmit={addTask}><label className="field full"><span className="label">Tarea</span><input className="input" name="title" required maxLength={160} placeholder="Ej. Cotizar fotógrafo" /></label><label className="field"><span className="label">Responsable</span><select className="select" name="assignee" defaultValue="ambos"><option value="novio">Pato</option><option value="novia">Andrea</option><option value="ambos">Ambos</option></select></label><label className="field"><span className="label">Prioridad</span><select className="select" name="priority" defaultValue="media">{priorityOptions.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</select></label><label className="field"><span className="label">Fecha límite</span><input className="input" name="due_date" type="date" /></label><label className="field"><span className="label">Categoría</span><select className="select" name="category_id" defaultValue=""><option value="">Sin categoría</option>{categoriesQ.data.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label className="field full"><span className="label">Notas</span><textarea className="textarea" name="description" maxLength={1000} /></label></form></Modal>
   </div>;

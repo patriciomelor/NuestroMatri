@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { EmptyState, Modal } from "@/components/ui";
 import { Icon } from "@/components/Icon";
 import { createClient } from "@/lib/supabase/client";
+import { notifyCollaborators } from "@/lib/push-notifications";
 import { roleCanAccessPath } from "@/lib/roles";
 import { useProfileRole } from "@/lib/useProfileRole";
 import { rows, useLive } from "@/lib/useLive";
@@ -36,7 +37,7 @@ export default function TimelinePage() {
       description: String(data.get("description") ?? "").trim() || null,
     });
     if (insertError) setError(insertError.message);
-    else { form.reset(); setModalOpen(false); await itemsQ.reload(); }
+    else { form.reset(); setModalOpen(false); await itemsQ.reload(); void notifyCollaborators("timeline_added", String(data.get("title") ?? "").trim()); }
     setSaving(false);
   }
 
@@ -44,7 +45,10 @@ export default function TimelinePage() {
     if (!window.confirm(`¿Eliminar “${item.title}” del cronograma?`)) return;
     const { error: deleteError } = await supabase.from("timeline_items").delete().eq("id", item.id);
     if (deleteError) setError(deleteError.message);
-    else await itemsQ.reload();
+    else {
+      await itemsQ.reload();
+      void notifyCollaborators("timeline_removed", item.title);
+    }
   }
 
   return <div className="app-shell"><aside className="sidebar"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={44} height={44} priority /><span><span className="brand-title">NuestroMatri</span><span className="brand-sub">Pato &amp; Andrea</span></span></Link><div className="nav-section">Planificación</div>{menu.filter(([href]) => role ? roleCanAccessPath(role, href) : href === "/cronograma").map(([href, label, icon]) => <Link className={`nav-link ${href === "/cronograma" ? "active" : ""}`} href={href} key={href}><Icon name={icon} /><span>{label}</span></Link>)}{role === "couple" && <><div className="nav-section">Cuenta</div><Link className="nav-link" href="/ajustes"><Icon name="settings" /><span>Ajustes</span></Link></>}</aside><main className="main"><div className="mobile-top"><Link className="brand" href={role === "couple" ? "/" : role === "wedding_planner" ? "/invitados" : "/tareas"}><Image src="/icons/icon-192.png" alt="" width={36} height={36} priority /><span className="brand-title">NuestroMatri</span></Link></div><div className="page">
