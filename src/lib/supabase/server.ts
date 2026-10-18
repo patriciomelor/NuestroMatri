@@ -30,7 +30,7 @@ export const createAnonClient = () =>
 
 /** Cliente con la secret key (solo servidor). Devuelve null si no está configurada. */
 export const createAdminClient = () => {
-  const secret = process.env.SUPABASE_SECRET_KEY;
+  const secret = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret) return null;
   return createPlainClient(supabaseUrl, secret, { auth: { persistSession: false } });
 };

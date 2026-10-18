@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
-  if (!admin) return Response.json({ error: "Falta configurar SUPABASE_SECRET_KEY en el servidor." }, { status: 503 });
+  if (!admin) return Response.json({ error: "Configura SUPABASE_SECRET_KEY o SUPABASE_SERVICE_ROLE_KEY en el entorno del servidor." }, { status: 503 });
 
   const redirectTo = new URL("/auth/set-password", request.url).toString();
   const { data: invitation, error } = await admin.auth.admin.inviteUserByEmail(email, {
