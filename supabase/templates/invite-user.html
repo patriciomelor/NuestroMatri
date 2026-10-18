@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Invitación a NuestroMatri</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#fff6ea;color:#3a1d37;font-family:Arial,Helvetica,sans-serif;">
+    <div style="display:none;font-size:1px;color:#fff6ea;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+      Te invitaron a colaborar en la planificación de NuestroMatri.
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#fff6ea" style="width:100%;background-color:#fff6ea;">
+      <tr>
+        <td align="center" style="padding:36px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #ecdfea;border-radius:12px;">
+            <tr>
+              <td align="center" style="padding:32px 28px 18px;">
+                <img src="https://matripatoyandre.app/icons/icon-192.png" width="52" height="52" alt="" style="display:block;width:52px;height:52px;border:0;margin:0 auto 12px;">
+                <p style="margin:0;color:#54234f;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:bold;">NuestroMatri</p>
+                <p style="margin:4px 0 0;color:#809684;font-size:12px;line-height:18px;">Pato &amp; Andrea</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px;">
+                <div style="height:1px;background-color:#ecdfea;font-size:1px;line-height:1px;">&nbsp;</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px 36px 36px;">
+                <p style="margin:0 0 10px;color:#9d7a90;font-size:12px;line-height:18px;text-align:center;text-transform:uppercase;">Una invitación especial</p>
+                <h1 style="margin:0 0 18px;color:#54234f;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:36px;font-weight:normal;text-align:center;">Te invitaron a colaborar</h1>
+                <p style="margin:0 0 14px;color:#3a1d37;font-size:16px;line-height:26px;">Hola,</p>
+                <p style="margin:0 0 24px;color:#6f5a6c;font-size:15px;line-height:25px;">
+                  <strong style="color:#3a1d37;">{{ .Email }}</strong> recibió una invitación para colaborar en la planificación de la boda de Pato y Andrea.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 24px;">
+                  <tr>
+                    <td align="center" bgcolor="#54234f" style="border-radius:6px;background-color:#54234f;">
+                      <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 26px;border:1px solid #54234f;border-radius:6px;color:#ffffff;font-size:15px;line-height:20px;font-weight:bold;text-decoration:none;">Aceptar invitación</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 8px;color:#6f5a6c;font-size:13px;line-height:21px;text-align:center;">Si el botón no funciona, abre este enlace:</p>
+                <p style="margin:0 0 24px;word-break:break-all;text-align:center;">
+                  <a href="{{ .ConfirmationURL }}" style="color:#6c3466;font-size:12px;line-height:20px;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                </p>
+                <p style="margin:0;color:#a090a0;font-size:12px;line-height:19px;text-align:center;">Si no esperabas esta invitación, puedes ignorar este correo.</p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:18px 0 0;color:#a090a0;font-size:11px;line-height:18px;text-align:center;">NuestroMatri · <a href="https://matripatoyandre.app" style="color:#809684;text-decoration:underline;">matripatoyandre.app</a></p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
