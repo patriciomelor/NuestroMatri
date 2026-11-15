@@ -2,13 +2,22 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash;
+      if (hash.includes("type=invite") || hash.includes("type=recovery")) {
+        router.replace(`/auth/set-password${hash}`);
+      }
+    }
+  }, [router]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
