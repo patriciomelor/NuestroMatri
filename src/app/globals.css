@@ -2636,6 +2636,58 @@ h3 {
   image-rendering: pixelated;
 }
 
+@media (max-width: 560px) {
+  .rsvp-floral {
+    width: min(240px, 72vw);
+    opacity: 0.5;
+  }
+
+  .rsvp-floral.right {
+    opacity: 0.3;
+  }
+
+  .rsvp-container {
+    padding: 88px 16px 40px;
+  }
+
+  .rsvp-header {
+    margin-bottom: 22px;
+  }
+
+  .rsvp-header .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+  }
+
+  .rsvp-header h1 {
+    font-size: clamp(2.2rem, 9vw, 3.2rem);
+    overflow-wrap: anywhere;
+  }
+
+  .rsvp-header .date {
+    font-size: clamp(1.05rem, 4.5vw, 1.3rem);
+    line-height: 1.4;
+  }
+
+  .rsvp-container form.row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rsvp-container form.row .field,
+  .rsvp-container form.row .btn {
+    width: 100%;
+  }
+
+  .person-form {
+    padding: 16px;
+  }
+
+  .search-result {
+    padding: 12px;
+  }
+}
+
 .code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
