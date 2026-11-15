@@ -6,7 +6,7 @@ import type { ProfileRole } from "@/lib/types";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
-const PUBLIC_PATHS = ["/login", "/confirmar", "/auth/set-password"];
+const PUBLIC_PATHS = ["/login", "/confirmar", "/auth/callback", "/auth/set-password"];
 
 /** Refresca la sesión en cada request y protege el panel de los novios. */
 export async function updateSession(request: NextRequest) {

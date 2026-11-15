@@ -20,11 +20,11 @@ Aplicación privada para planificar la boda de Pato y Andrea, con panel de organ
 
 2. En Supabase, abre **SQL Editor** y ejecuta completa [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). Crea el esquema, las políticas RLS, RPC del RSVP, bucket privado y categorías iniciales.
 
-3. En **Authentication → Users**, crea las dos cuentas de la pareja. La app no ofrece registro público.
+3. En **Authentication → Users**, crea las dos cuentas de la pareja. El login permite que wedding planners y damas de honor creen su propia cuenta.
 
 4. Inicia sesión con cada cuenta y entra a **Ajustes** para asignar el lado de la cuenta: Pato o Andrea. La fecha inicial es el 22 de marzo de 2027 y se puede modificar ahí.
 
-5. Para habilitar roles y las invitaciones desde **Ajustes**, ejecuta también [`supabase/migrations/0002_user_roles.sql`](supabase/migrations/0002_user_roles.sql) y configura `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` solo en el servidor. Las invitaciones usan `https://matripatoyandre.app` como dominio público. Agrega `https://matripatoyandre.app/auth/set-password` a **Authentication → URL Configuration → Redirect URLs** de Supabase. La pareja puede invitar wedding planners (invitados, confirmaciones, tareas, cronograma y mesas) y damas de honor (tareas y cronograma).
+5. Para habilitar roles, registro público e invitaciones desde **Ajustes**, ejecuta [`supabase/migrations/0002_user_roles.sql`](supabase/migrations/0002_user_roles.sql) y [`supabase/migrations/0003_public_signup.sql`](supabase/migrations/0003_public_signup.sql), y configura `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` solo en el servidor. Agrega `https://matripatoyandre.app/auth/callback*` y `https://matripatoyandre.app/auth/set-password` a **Authentication → URL Configuration → Redirect URLs** de Supabase. Los usuarios pueden registrarse como wedding planner (invitados, confirmaciones, tareas, cronograma y mesas) o dama de honor (tareas y cronograma); la pareja también puede enviar invitaciones desde **Ajustes**.
 
 ## Desarrollo y validación
 
