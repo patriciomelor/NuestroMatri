@@ -75,7 +75,7 @@ export function RsvpForm({ code }: { code?: string }) {
         if (!active) return;
         if (codeError) setError("No pudimos abrir este enlace. Revisa que el código sea correcto.");
         else if (codeData?.length) {
-          const guests = (codeData as (Person & { group_name: string })[]).map((person) => ({ ...person, attending: person.attending ?? false }));
+          const guests = codeData as (Person & { group_name: string })[];
           setPeople(guests);
           setSelected(new Set(guests.map((person) => person.guest_id)));
           setResponses(Object.fromEntries(guests.map((person) => [person.guest_id, { ...blankResponse(), attending: person.attending ?? true }])));
